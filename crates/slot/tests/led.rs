@@ -44,25 +44,26 @@ fn a_flat_battery_that_is_not_charging_reads_low() {
 }
 
 #[test]
-fn the_low_threshold_is_twenty_percent_not_just_a_number_comfortably_below_it() {
+fn low_battery_warning_starts_at_the_platform_threshold() {
     let d = tmp_root_with_carts(&["Emerald"]);
     let (mut a, charge, percent) = app_playing_with_charge(d.path(), "Emerald");
     charge.store(1, Ordering::Relaxed);
 
-    percent.store(20, Ordering::Relaxed);
+    let threshold = if cfg!(feature = "brick") { 15 } else { 20 };
+    percent.store(threshold, Ordering::Relaxed);
     a.tick_ms(10_000);
     assert_eq!(
         a.led_state(),
         LedState::Low,
-        "20% is still at the threshold"
+        "the threshold must trigger the warning"
     );
 
-    percent.store(21, Ordering::Relaxed);
+    percent.store(threshold + 1, Ordering::Relaxed);
     a.tick_ms(20_000);
     assert_eq!(
         a.led_state(),
         LedState::Running,
-        "21% is one point above the threshold"
+        "one point above the threshold must not trigger the warning"
     );
 }
 
