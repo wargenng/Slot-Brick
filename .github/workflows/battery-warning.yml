@@ -28,7 +28,8 @@ jobs:
       - name: Build Brick executable
         run: |
           docker run --rm -v "$PWD":/src -w /src -e CARGO_HOME=/src/.docker-cache/cargo \
-            slot-brick-build sh brick/build-frontend.sh
+            slot-brick-build cargo build --locked --profile device --target aarch64-unknown-linux-gnu \
+            -p slot --no-default-features --features brick
           mkdir -p battery-warning/Slot/System
           cp target/aarch64-unknown-linux-gnu/device/slot battery-warning/Slot/System/slot
           sha256sum battery-warning/Slot/System/slot > battery-warning/SHA256SUMS
