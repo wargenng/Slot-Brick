@@ -22,6 +22,8 @@ jobs:
           docker run --rm -v "$PWD":/src -w /src -e CARGO_HOME=/src/.docker-cache/cargo slot-brick-sim \
             cargo test --locked --release --target-dir target-sim -p slot --no-default-features --features sim \
             --test led --test power --test brick_shutdown --test brick_led_menu
+          docker run --rm -v "$PWD":/src -w /src -e CARGO_HOME=/src/.docker-cache/cargo \
+            slot-brick-sim cargo test --locked --release -p slot-power --test device
       - name: Exercise warning through the running frontend
         run: sh brick/sim.sh test battery leds sleep
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
