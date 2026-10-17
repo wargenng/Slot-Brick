@@ -121,7 +121,7 @@ impl BrickLeds {
     }
     fn apply(&self,s: Settings) -> io::Result<()> {
         if s.mode==0 { return self.restore_snapshot() }
-        let warning = self.power_state == LedState::Low && self.sleeping.is_none();
+        let warning = matches!(self.power_state, LedState::Low | LedState::VeryLow) && self.sleeping.is_none();
         let off = s.mode == 1 || self.power_state == LedState::Off;
         self.write("effect_enable","1")?;
         for (name,level) in [("max_scale",s.top),("max_scale_f1f2",s.buttons),("max_scale_lr",s.triggers)] {
@@ -131,12 +131,13 @@ impl BrickLeds {
         }
         for zone in ["m","f1","f2","lr"] {
             let alarm = warning && matches!(zone, "f1" | "f2");
+            let blink = alarm && self.power_state == LedState::VeryLow;
             self.write(&format!("effect_rgb_hex_{zone}"),if alarm { "FF0000" } else { COLORS[s.color as usize] })?;
             self.write(&format!("effect_cycles_{zone}"),"-1")?;
-            self.write(&format!("effect_duration_{zone}"),if alarm { "1000" } else { "2000" })?;
+            self.write(&format!("effect_duration_{zone}"),if blink { "500" } else { "2000" })?;
             // NextUI LEDS_updateLeds uses this order: the effect write applies
             // brightness/color/timing, including zero brightness for Off.
-            self.write(&format!("effect_{zone}"),if alarm { "5" } else if s.effect==0 {"4"} else {"2"})?;
+            self.write(&format!("effect_{zone}"),if blink { "5" } else if alarm || s.effect==0 {"4"} else {"2"})?;
         }
         Ok(())
     }
@@ -200,16 +201,43 @@ impl BrickLeds {
         fs::read_to_string(sys.join(name)).unwrap().trim().to_owned()
     }
     #[test]
+    fn warning_changes_between_solid_and_fast_blink_with_lights_off() {
+        let (_t, sys, mut leds) = battery_leds();
+        leds.toggle().unwrap();
+        for (state, effect, duration) in [
+            (LedState::Low, "4", "2000"),
+            (LedState::VeryLow, "5", "500"),
+            (LedState::Low, "4", "2000"),
+        ] {
+            leds.set_power_state(state).unwrap();
+            for zone in ["f1", "f2"] {
+                assert_eq!(read(&sys, &format!("effect_rgb_hex_{zone}")), "FF0000");
+                assert_eq!(read(&sys, &format!("effect_{zone}")), effect);
+                assert_eq!(read(&sys, &format!("effect_duration_{zone}")), duration);
+            }
+            assert_eq!(read(&sys, "max_scale_f1f2"), "20");
+            assert_eq!(read(&sys, "max_scale"), "0");
+            assert_eq!(read(&sys, "max_scale_lr"), "0");
+            leds.sleep().unwrap();
+            assert_eq!(read(&sys, "effect_enable"), "0");
+            leds.wake().unwrap();
+            assert_eq!(read(&sys, "effect_f1"), effect);
+        }
+        leds.set_power_state(LedState::Charging).unwrap();
+        assert_eq!(read(&sys, "max_scale_f1f2"), "0");
+        assert_eq!(read(&sys, "effect_rgb_hex_f1"), "FFFFFF");
+    }
+    #[test]
     fn low_battery_overrides_only_front_lights_even_when_disabled() {
         let (t, sys, mut leds) = battery_leds();
         leds.change(Row::LedColor, true).unwrap();
         leds.change(Row::LedEffect, true).unwrap();
         let config = fs::read(t.path().join(FILE)).unwrap();
-        leds.set_power_state(LedState::Low).unwrap();
+        leds.set_power_state(LedState::VeryLow).unwrap();
         for zone in ["f1", "f2"] {
             assert_eq!(read(&sys, &format!("effect_rgb_hex_{zone}")), "FF0000");
             assert_eq!(read(&sys, &format!("effect_{zone}")), "5");
-            assert_eq!(read(&sys, &format!("effect_duration_{zone}")), "1000");
+            assert_eq!(read(&sys, &format!("effect_duration_{zone}")), "500");
             assert_eq!(read(&sys, &format!("effect_cycles_{zone}")), "-1");
         }
         assert_eq!(read(&sys, "max_scale_f1f2"), "20");
@@ -246,7 +274,7 @@ impl BrickLeds {
     #[test]
     fn battery_warning_stays_dark_during_sleep_and_shutdown() {
         let (_t, sys, mut leds) = battery_leds();
-        leds.set_power_state(LedState::Low).unwrap();
+        leds.set_power_state(LedState::VeryLow).unwrap();
         leds.sleep().unwrap();
         assert_eq!(read(&sys, "max_scale_f1f2"), "0");
         assert_eq!(read(&sys, "effect_enable"), "0");
@@ -260,7 +288,7 @@ impl BrickLeds {
         leds.wake().unwrap();
         assert_eq!(read(&sys, "effect_f1"), "4");
         assert_eq!(read(&sys, "effect_rgb_hex_f1"), "FFFFFF");
-        leds.set_power_state(LedState::Low).unwrap();
+        leds.set_power_state(LedState::VeryLow).unwrap();
         leds.set_power_state(LedState::Off).unwrap();
         for name in ["max_scale", "max_scale_f1f2", "max_scale_lr"] {
             assert_eq!(read(&sys, name), "0");

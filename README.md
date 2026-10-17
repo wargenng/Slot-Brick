@@ -100,7 +100,7 @@ A `/` means either button; a `+` means hold the first button and press the secon
 
 ## Features
 
-- Low battery warning: F1/F2 blink red at 15% or below, even with decorative LEDs off.
+- Low battery warning: F1/F2 stay red at 15% or below and blink rapidly at 10% or below (500 ms cycle), even with decorative LEDs off.
   Charging restores your lights. The existing save-and-shutdown at 5% is unchanged.
 
 - Support for the Brick's screen, controls and LEDs (on/off, brightness, colour and effect)

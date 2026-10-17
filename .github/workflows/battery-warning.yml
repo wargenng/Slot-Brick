@@ -25,6 +25,8 @@ jobs:
           docker run --rm -v "$PWD":/src -w /src -e CARGO_HOME=/src/.docker-cache/cargo \
             slot-brick-build cargo test --locked --release -p slot --no-default-features --features brick \
             --lib --test led --test power --test brick_shutdown --test brick_led_menu
+          docker run --rm -v "$PWD":/src -w /src -e CARGO_HOME=/src/.docker-cache/cargo \
+            slot-brick-build cargo test --locked --release -p slot-power --test device
       - name: Build Brick executable
         run: |
           docker run --rm -v "$PWD":/src -w /src -e CARGO_HOME=/src/.docker-cache/cargo \

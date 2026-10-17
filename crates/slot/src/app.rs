@@ -1955,6 +1955,8 @@ impl App {
         match b.charge {
             Charge::Charging => LedState::Charging,
             Charge::Full => LedState::Charged,
+            #[cfg(feature = "brick")]
+            _ if b.percent <= 10 => LedState::VeryLow,
             _ if b.percent <= BATTERY_LOW => LedState::Low,
             _ => LedState::Running,
         }

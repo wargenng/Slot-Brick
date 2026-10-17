@@ -37,6 +37,7 @@ pub enum LedState {
     Off,
     Running,
     Low,
+    VeryLow,
     Charging,
     Charged,
 }
