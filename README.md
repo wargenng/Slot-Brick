@@ -100,6 +100,9 @@ A `/` means either button; a `+` means hold the first button and press the secon
 
 ## Features
 
+- Low battery warning: F1/F2 blink red at 15% or below, even with decorative LEDs off.
+  Charging restores your lights. The existing save-and-shutdown at 5% is unchanged.
+
 - Support for the Brick's screen, controls and LEDs (on/off, brightness, colour and effect)
 - Deep sleep with low battery drain, plus auto-sleep after 5 min idle in menus or 15 min in game
 - Adaptive CPU clocks for smooth audio

@@ -1,0 +1,38 @@
+name: Battery warning for v0.23
+
+on:
+  push:
+    branches: [battery-warning-v0.23]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Build toolchain
+        run: |
+          docker build -t slot-brick-build -f brick/Dockerfile brick
+          mkdir -p .docker-cache/cargo
+      - name: Test LED and power behavior
+        run: |
+          docker run --rm -v "$PWD":/src -w /src -e CARGO_HOME=/src/.docker-cache/cargo \
+            slot-brick-build cargo test --locked --release -p slot --no-default-features --features brick \
+            --lib --test led --test power --test brick_shutdown --test brick_led_menu
+      - name: Build Brick executable
+        run: |
+          docker run --rm -v "$PWD":/src -w /src -e CARGO_HOME=/src/.docker-cache/cargo \
+            slot-brick-build sh brick/build-frontend.sh
+          mkdir -p battery-warning/Slot/System
+          cp target/aarch64-unknown-linux-gnu/device/slot battery-warning/Slot/System/slot
+          sha256sum battery-warning/Slot/System/slot > battery-warning/SHA256SUMS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: slot-brick-v0.23-battery-warning
+          path: battery-warning
